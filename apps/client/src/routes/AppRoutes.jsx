@@ -1,15 +1,14 @@
 // apps/client/src/routes/AppRoutes.jsx
 // Complete application routing table with Role-Based Access Control and Verification guards
+// Landing page (/) defaults to the University Login & Sign Up portal.
 
 import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { ROLES } from '@campus/shared'
 import RoleRoute from './RoleRoute.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
 
 // Auth & Verification pages
 import LoginPage from '../pages/auth/LoginPage.jsx'
-import RegisterPage from '../pages/auth/RegisterPage.jsx'
 import VerifyAccountPage from '../pages/auth/VerifyAccountPage.jsx'
 
 // Student pages
@@ -34,25 +33,12 @@ import UserManagementPage from '../pages/admin/UserManagementPage.jsx'
 import FacilitySettingsPage from '../pages/admin/FacilitySettingsPage.jsx'
 
 export default function AppRoutes() {
-  const { session, profile } = useAuth()
-
-  // Default home redirection based on verification state and logged-in role
-  const getHomeRedirect = () => {
-    if (!session) return '/login'
-    if (profile && profile.isVerified === false) return '/verify-account'
-
-    const role = profile?.role || 'STUDENT'
-    if (role === 'SUPERVISOR') return '/supervisor'
-    if (role === 'WORKER') return '/worker'
-    if (role === 'ADMIN') return '/admin'
-    return '/student'
-  }
-
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      {/* Landing page: Official University Login & Sign Up Portal */}
+      <Route path="/" element={<LoginPage />} />
+      <Route path="/login" element={<LoginPage initialTab="LOGIN" />} />
+      <Route path="/register" element={<LoginPage initialTab="REGISTER" />} />
 
       {/* Account Verification route (accessible to logged-in users needing verification) */}
       <Route path="/verify-account" element={<VerifyAccountPage />} />
@@ -86,9 +72,6 @@ export default function AppRoutes() {
         <Route path="/admin/facilities" element={<FacilitySettingsPage />} />
       </Route>
 
-      {/* Root redirect */}
-      <Route path="/" element={<Navigate to={getHomeRedirect()} replace />} />
-
       {/* 404 Fallback */}
       <Route
         path="*"
@@ -102,7 +85,7 @@ export default function AppRoutes() {
               href="/"
               className="btn-primary mt-4 inline-flex items-center text-xs py-2 px-4"
             >
-              Return Home
+              Return to Landing Page
             </a>
           </div>
         }

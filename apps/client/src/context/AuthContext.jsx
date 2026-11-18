@@ -63,12 +63,11 @@ export function AuthProvider({ children }) {
         // ignore
       }
 
-      // Default to Chinwe Eze (Student from Mockup) for initial preview
+      // Unauthenticated by default so users land on Login / Sign Up landing page
       if (isMounted) {
-        const defaultUser = MOCK_USERS[0]
-        setSession({ access_token: 'mock-jwt-token' })
-        setUser(defaultUser)
-        setProfile(defaultUser)
+        setSession(null)
+        setUser(null)
+        setProfile(null)
         setLoading(false)
       }
     }
