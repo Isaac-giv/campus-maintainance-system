@@ -163,7 +163,7 @@ export default function LoginPage({ initialTab }) {
         {/* Hero Mission Text */}
         <div className="relative z-10 my-auto py-10">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary-800 text-accent border border-primary-700/50 mb-4">
-            Official Campus Portal
+            Campus Facilities Helpdesk
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
             Campus Maintenance <br />
