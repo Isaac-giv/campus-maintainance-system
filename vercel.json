@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm run build --workspace=@campus/client",
+  "outputDirectory": "apps/client/dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
