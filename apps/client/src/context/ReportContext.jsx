@@ -1,5 +1,6 @@
 // apps/client/src/context/ReportContext.jsx
 // Central state management for Maintenance Reports and Notifications
+// Integrated with Pure Supabase Backend-as-a-Service (BaaS) & Realtime
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import {
@@ -8,6 +9,11 @@ import {
   MOCK_CATEGORIES,
   MOCK_WORKERS,
 } from '../data/mockData.js'
+import {
+  fetchReports,
+  updateReportInDb,
+  subscribeToLiveReports,
+} from '../services/supabaseService.js'
 
 const ReportContext = createContext(null)
 
@@ -44,6 +50,29 @@ export function ReportProvider({ children }) {
       reportId: 'rep-002',
     },
   ])
+
+  // Initial load from Supabase BaaS (falls back to initial reports if offline)
+  useEffect(() => {
+    let isMounted = true
+    async function loadData() {
+      const remoteReports = await fetchReports()
+      if (isMounted && remoteReports && remoteReports.length > 0) {
+        setReports(remoteReports)
+      }
+    }
+    loadData()
+
+    // Real-time live update subscription
+    const unsubscribe = subscribeToLiveReports(() => {
+      // On live change from another client, refresh reports
+      loadData()
+    })
+
+    return () => {
+      isMounted = false
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+  }, [])
 
   // Sync reports to localStorage
   useEffect(() => {
@@ -93,6 +122,12 @@ export function ReportProvider({ children }) {
 
     setReports((prev) => [newReport, ...prev])
 
+    // Sync to Supabase in background
+    updateReportInDb(id, {
+      status: 'PENDING',
+      title: newReport.title,
+    })
+
     // Add notification
     setNotifications((prev) => [
       {
@@ -133,6 +168,15 @@ export function ReportProvider({ children }) {
         }
       })
     )
+
+    // Sync to Supabase BaaS
+    updateReportInDb(reportId, {
+      status: 'ASSIGNED',
+      priority: priority,
+      assignedWorkerId: workerId,
+      workerName: worker?.name,
+      supervisorNotes: instructions,
+    })
   }
 
   // Start work (Worker)
@@ -154,6 +198,8 @@ export function ReportProvider({ children }) {
         }
       })
     )
+
+    updateReportInDb(reportId, { status: 'IN_PROGRESS' })
   }
 
   // Complete work (Worker -> Awaiting Verification)
@@ -181,10 +227,17 @@ export function ReportProvider({ children }) {
         }
       })
     )
+
+    updateReportInDb(reportId, {
+      status: 'AWAITING_VERIFICATION',
+      workerNotes,
+      resolutionImageUrl: resolutionPhotoUrl,
+    })
   }
 
   // Verify and Resolve (Supervisor / Admin)
   const verifyAndResolve = (reportId, supervisorNotes) => {
+    const resolvedAt = new Date().toISOString()
     setReports((prev) =>
       prev.map((rep) => {
         if (rep.id !== reportId) return rep
@@ -192,17 +245,24 @@ export function ReportProvider({ children }) {
           ...rep,
           status: 'RESOLVED',
           supervisorNotes,
+          resolvedAt,
           statusHistory: [
             ...rep.statusHistory,
             {
               status: 'RESOLVED',
-              timestamp: new Date().toISOString(),
+              timestamp: resolvedAt,
               notes: supervisorNotes || 'Work inspected and signed off by supervisor.',
             },
           ],
         }
       })
     )
+
+    updateReportInDb(reportId, {
+      status: 'RESOLVED',
+      supervisorNotes,
+      resolvedAt,
+    })
   }
 
   // Reject / Request rework (Supervisor)
@@ -225,6 +285,11 @@ export function ReportProvider({ children }) {
         }
       })
     )
+
+    updateReportInDb(reportId, {
+      status: 'REJECTED',
+      supervisorNotes: rejectionReason,
+    })
   }
 
   // Cancel report (Student)
@@ -246,6 +311,8 @@ export function ReportProvider({ children }) {
         }
       })
     )
+
+    updateReportInDb(reportId, { status: 'CANCELLED' })
   }
 
   // Mark all notifications as read
