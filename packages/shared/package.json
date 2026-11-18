@@ -1,0 +1,23 @@
+{
+  "name": "@campus/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared constants, enums and Zod validation schemas used by both client and server",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./constants": "./src/constants/index.js",
+    "./schemas": "./src/schemas/index.js"
+  },
+  "scripts": {
+    "lint": "eslint src --ext .js",
+    "lint:fix": "eslint src --ext .js --fix"
+  },
+  "devDependencies": {
+    "eslint": "^9.27.0"
+  },
+  "dependencies": {
+    "zod": "^3.24.4"
+  }
+}

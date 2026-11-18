@@ -1,0 +1,57 @@
+/* apps/client/src/index.css */
+/* Tailwind CSS directives — must appear before any custom styles. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Global base styles ────────────────────────────────────────── */
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+
+  /* Focus ring consistent with brand colours */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-700 ring-offset-2;
+  }
+}
+
+/* ── Reusable component layer ──────────────────────────────────── */
+@layer components {
+  /* Primary button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-primary-700 px-4 py-2
+           text-sm font-medium text-white shadow-sm
+           hover:bg-primary-600 focus-visible:ring-2 focus-visible:ring-primary-700
+           disabled:cursor-not-allowed disabled:opacity-50
+           transition-colors duration-150;
+  }
+
+  /* Secondary / outline button */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-gray-300
+           bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm
+           hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-primary-700
+           disabled:cursor-not-allowed disabled:opacity-50
+           transition-colors duration-150;
+  }
+
+  /* Form input */
+  .input {
+    @apply block w-full rounded-lg border border-gray-300 bg-white px-3 py-2
+           text-sm text-gray-900 shadow-sm
+           placeholder:text-gray-400
+           focus:border-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-700
+           disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500;
+  }
+
+  /* Card container */
+  .card {
+    @apply rounded-xl border border-gray-200 bg-white p-6 shadow-sm;
+  }
+}

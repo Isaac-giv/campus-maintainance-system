@@ -1,0 +1,321 @@
+// apps/server/prisma/schema.prisma
+// Cosmopolitan University Campus Maintenance Reporting & Tracking System
+// Phase 1.4-compliant Prisma schema.
+//
+// DATABASE CONNECTION
+// ─────────────────────────────────────────────────────────────────
+// DATABASE_URL  → Supavisor Session Pooler (port 5432)
+//                 username format: campus_app.<project-ref>
+//                 Used at RUNTIME by Prisma Client.
+//
+// DIRECT_URL    → Direct connection (port 5432, no pooler)
+//                 username format: campus_admin.<project-ref>
+//                 Used ONLY by prisma migrate. Never at runtime.
+//
+// IMPORTANT: DATABASE_URL is a PostgreSQL wire-protocol connection string.
+// It is NOT the Supabase service_role HTTP key. See Phase 1.4 Output A.
+//
+// SCHEMA CONSTRAINTS NOT EXPRESSIBLE IN PRISMA
+// ─────────────────────────────────────────────
+// The following are defined in raw SQL migration files (Phase 2.2+):
+//   - Composite FK on report_assignments (worker_id, worker_role, worker_is_active)
+//     referencing profiles (id, role, is_active) — enforces only active WORKERs
+//   - Partial unique index: CREATE UNIQUE INDEX idx_single_active_assignment_per_report
+//     ON report_assignments (report_id) WHERE (is_active = true)
+//   - Trigger: trg_protect_profile_privilege_fields
+//   - Trigger: trg_protect_report_fields
+//   - Trigger: trg_audit_append_only (on report_status_history)
+//   - PostgreSQL SEQUENCE: report_tracking_seq
+//   - RLS policies and helper functions (Output C)
+//   - Column-level grants (is_read UPDATE only on notifications)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ================================================================
+// ENUMS
+// ================================================================
+
+enum Role {
+  STUDENT
+  SUPERVISOR
+  WORKER
+  ADMIN
+}
+
+enum ReportStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  AWAITING_VERIFICATION
+  RESOLVED
+  REJECTED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  EMERGENCY
+}
+
+enum AttachmentType {
+  INITIAL_PHOTO
+  RESOLUTION_EVIDENCE
+}
+
+// ================================================================
+// MODELS
+// ================================================================
+
+/// User profile record. id mirrors auth.users(id) in Supabase Auth.
+/// Created by Express on first successful login (profile sync).
+/// Passwords are NEVER stored here — they live exclusively in auth.users.
+model Profile {
+  id              String    @id @db.Uuid
+  /// Mirrors auth.users(email). Immutable after creation (trigger enforced).
+  email           String    @unique @db.VarChar(255)
+  fullName        String?   @db.VarChar(255) @map("full_name")
+  phoneNumber     String?   @db.VarChar(20)  @map("phone_number")
+  role            Role      @default(STUDENT)
+  /// Set by admin room-allocation operation only. Not self-service by student.
+  hostelBlockId   String?   @db.Uuid         @map("hostel_block_id")
+  /// Room number string (e.g. "101"). Resolved to room_id on report creation.
+  roomNumber      String?   @db.VarChar(20)  @map("room_number")
+  isActive        Boolean   @default(true)   @map("is_active")
+  createdAt       DateTime  @default(now())  @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt       @map("updated_at") @db.Timestamptz
+
+  // Relations
+  authUser        HostelBlock?         @relation(fields: [hostelBlockId], references: [id])
+  supervisorHostels SupervisorHostel[]
+  reportsAsStudent MaintenanceReport[] @relation("StudentReports")
+  reportsAsWorker  MaintenanceReport[] @relation("WorkerReports")
+  assignmentsMade  ReportAssignment[]  @relation("AssignerAssignments")
+  assignmentsReceived ReportAssignment[] @relation("WorkerAssignments")
+  statusChanges    ReportStatusHistory[]
+  notifications    Notification[]
+
+  @@map("profiles")
+}
+
+/// Hostel building (Block A, Block B, etc.)
+model HostelBlock {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  code        String   @unique @db.VarChar(20)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt      @map("updated_at") @db.Timestamptz
+
+  // Relations
+  rooms              HostelRoom[]
+  supervisorHostels  SupervisorHostel[]
+  reports            MaintenanceReport[]
+  residentProfiles   Profile[]
+
+  @@map("hostel_blocks")
+}
+
+/// Individual rooms within a hostel block.
+model HostelRoom {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hostelBlockId String   @map("hostel_block_id") @db.Uuid
+  roomNumber    String   @map("room_number") @db.VarChar(20)
+  floor         Int?
+  capacity      Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt      @map("updated_at") @db.Timestamptz
+
+  // Relations
+  hostelBlock HostelBlock         @relation(fields: [hostelBlockId], references: [id])
+  reports     MaintenanceReport[]
+
+  @@unique([hostelBlockId, roomNumber])
+  @@index([hostelBlockId])
+  @@map("hostel_rooms")
+}
+
+/// Supervisor–hostel assignment junction table.
+/// One supervisor may manage multiple hostel blocks.
+model SupervisorHostel {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supervisorId  String   @map("supervisor_id") @db.Uuid
+  hostelBlockId String   @map("hostel_block_id") @db.Uuid
+  assignedAt    DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+  assignedById  String?  @map("assigned_by_id") @db.Uuid
+
+  // Relations
+  supervisor   Profile     @relation(fields: [supervisorId], references: [id])
+  hostelBlock  HostelBlock @relation(fields: [hostelBlockId], references: [id])
+
+  @@unique([supervisorId, hostelBlockId])
+  @@index([supervisorId])
+  @@index([hostelBlockId])
+  @@map("supervisor_hostels")
+}
+
+/// Issue category reference data (Plumbing, Electrical, etc.)
+model IssueCategory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt      @map("updated_at") @db.Timestamptz
+
+  // Relations
+  reports MaintenanceReport[]
+
+  @@map("issue_categories")
+}
+
+/// Core maintenance report entity.
+/// Tracking code format: CU-YYYY-NNNNNN (generated server-side via PostgreSQL sequence).
+/// hostel_block_id and room_id are immutable after creation (trigger enforced).
+/// All INSERT and UPDATE operations go through Express (campus_app role).
+/// Direct authenticated INSERT/UPDATE is revoked at the grant level.
+model MaintenanceReport {
+  id                      String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trackingCode            String       @unique @db.VarChar(20) @map("tracking_code")
+  title                   String       @db.VarChar(255)
+  description             String       @db.Text
+  categoryId              String       @map("category_id") @db.Uuid
+  hostelBlockId           String       @map("hostel_block_id") @db.Uuid
+  roomId                  String       @map("room_id") @db.Uuid
+  specificLocationDetails String?      @map("specific_location_details") @db.Text
+  status                  ReportStatus @default(PENDING)
+  priority                Priority     @default(LOW)
+  /// Authoritative student who filed the report. Immutable after creation.
+  studentId               String       @map("student_id") @db.Uuid
+  /// Denormalised convenience field. Kept consistent by assignment transaction.
+  /// Set to NULL when report is RESOLVED or CANCELLED.
+  currentWorkerId         String?      @map("current_worker_id") @db.Uuid
+  workerNotes             String?      @map("worker_notes") @db.Text
+  supervisorNotes         String?      @map("supervisor_notes") @db.Text
+  workerCompletedAt       DateTime?    @map("worker_completed_at") @db.Timestamptz
+  verifiedAt              DateTime?    @map("verified_at") @db.Timestamptz
+  createdAt               DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime     @updatedAt      @map("updated_at") @db.Timestamptz
+
+  // Relations
+  category       IssueCategory         @relation(fields: [categoryId], references: [id])
+  hostelBlock    HostelBlock           @relation(fields: [hostelBlockId], references: [id])
+  room           HostelRoom            @relation(fields: [roomId], references: [id])
+  student        Profile               @relation("StudentReports", fields: [studentId], references: [id])
+  currentWorker  Profile?              @relation("WorkerReports", fields: [currentWorkerId], references: [id])
+  assignments    ReportAssignment[]
+  statusHistory  ReportStatusHistory[]
+  attachments    ReportAttachment[]
+  notifications  Notification[]
+
+  @@index([studentId])
+  @@index([hostelBlockId])
+  @@index([status])
+  @@index([currentWorkerId])
+  @@index([trackingCode])
+  @@map("maintenance_reports")
+}
+
+/// Full assignment history for a report.
+/// is_active=true means current active assignment (enforced by partial unique index in SQL).
+/// Composite FK to profiles (id, role, is_active) enforced in raw SQL migration.
+model ReportAssignment {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportId       String    @map("report_id") @db.Uuid
+  workerId       String    @map("worker_id") @db.Uuid
+  assignedById   String    @map("assigned_by_id") @db.Uuid
+  /// Invariant columns required for composite FK — always 'WORKER' and true.
+  /// Set by Express, not by client. CHECK constraints in SQL migration.
+  workerRole     Role      @default(WORKER) @map("worker_role")
+  workerIsActive Boolean   @default(true)   @map("worker_is_active")
+  instructions   String?   @db.Text
+  isActive       Boolean   @default(true)   @map("is_active")
+  assignedAt     DateTime  @default(now())  @map("assigned_at") @db.Timestamptz
+  revokedAt      DateTime?                  @map("revoked_at")  @db.Timestamptz
+
+  // Relations
+  report     MaintenanceReport @relation(fields: [reportId], references: [id])
+  worker     Profile           @relation("WorkerAssignments", fields: [workerId], references: [id])
+  assignedBy Profile           @relation("AssignerAssignments", fields: [assignedById], references: [id])
+
+  @@index([reportId])
+  @@index([workerId])
+  @@index([isActive])
+  @@map("report_assignments")
+}
+
+/// Append-only audit trail of all report status transitions.
+/// UPDATE and DELETE are blocked by trg_audit_append_only trigger.
+model ReportStatusHistory {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportId        String       @map("report_id") @db.Uuid
+  previousStatus  ReportStatus? @map("previous_status")
+  newStatus       ReportStatus  @map("new_status")
+  changedById     String       @map("changed_by_id") @db.Uuid
+  reasonOrNotes   String?      @map("reason_or_notes") @db.Text
+  changedAt       DateTime     @default(now()) @map("changed_at") @db.Timestamptz
+
+  // Relations
+  report    MaintenanceReport @relation(fields: [reportId], references: [id])
+  changedBy Profile           @relation(fields: [changedById], references: [id])
+
+  @@index([reportId])
+  @@index([changedAt])
+  @@map("report_status_history")
+}
+
+/// Photo or evidence file metadata. Actual binary stored in Supabase Storage.
+/// All INSERT operations go through Express which validates magic bytes and size.
+model ReportAttachment {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportId       String         @map("report_id") @db.Uuid
+  attachmentType AttachmentType @map("attachment_type")
+  /// Supabase Storage bucket name (report-photos | resolution-evidence)
+  storageBucket  String         @map("storage_bucket") @db.VarChar(100)
+  /// Storage object path: {reportId}/{stage}/{attachmentId}.{ext}
+  storagePath    String         @map("storage_path") @db.VarChar(500)
+  mimeType       String         @map("mime_type") @db.VarChar(50)
+  fileSizeBytes  Int            @map("file_size_bytes")
+  uploadedById   String         @map("uploaded_by_id") @db.Uuid
+  uploadedAt     DateTime       @default(now()) @map("uploaded_at") @db.Timestamptz
+
+  // Relations
+  report MaintenanceReport @relation(fields: [reportId], references: [id])
+
+  @@index([reportId])
+  @@index([attachmentType])
+  @@map("report_attachments")
+}
+
+/// In-app notification record.
+/// Created by Express during report state transitions.
+/// Users read and mark their own notifications via REST or Realtime.
+/// Column-level grant restricts authenticated UPDATE to is_read only (SQL migration).
+model Notification {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  reportId   String?   @map("report_id") @db.Uuid
+  title      String    @db.VarChar(255)
+  message    String    @db.Text
+  eventType  String    @map("event_type") @db.VarChar(50)
+  isRead     Boolean   @default(false) @map("is_read")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  user   Profile            @relation(fields: [userId], references: [id])
+  report MaintenanceReport? @relation(fields: [reportId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}

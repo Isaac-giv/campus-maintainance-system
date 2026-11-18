@@ -1,0 +1,30 @@
+{
+  "name": "campus-maintenance-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Greenwood University Campus Maintenance Reporting and Tracking System — monorepo root",
+  "type": "module",
+  "workspaces": [
+    "apps/client",
+    "apps/server",
+    "packages/shared"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:client": "npm run dev --workspace=apps/client",
+    "dev:server": "npm run dev --workspace=apps/server",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:fix": "npm run lint:fix --workspaces --if-present",
+    "format": "prettier --write \"**/*.{js,jsx,json,md,css}\" --ignore-path .prettierignore",
+    "format:check": "prettier --check \"**/*.{js,jsx,json,md,css}\" --ignore-path .prettierignore",
+    "clean": "npm run clean --workspaces --if-present"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3"
+  }
+}
