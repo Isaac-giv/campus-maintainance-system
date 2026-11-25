@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Copy } from 'lucide-react'
 import { validateReport } from '@campus/shared'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -24,10 +24,23 @@ import {
 } from '../../components/ui/index.jsx'
 import { PhotoPicker } from '../../components/reports/ReportParts.jsx'
 
+const CATEGORY_EMOJIS = {
+  Plumbing: '🚿',
+  Electrical: '💡',
+  'Furniture & Fittings': '🪑',
+  'Air Conditioning': '❄️',
+  'Internet & Network': '📶',
+  'Building Structure': '🏢',
+  'Sanitation & Pests': '🧹',
+}
+
 export default function CreateReportPage() {
   const { profile } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const categoryParam = searchParams.get('category') || searchParams.get('cat')
+
   const ref = useAsync(() => Promise.all([fetchCategories(), fetchBuildings()]), [])
   const [form, setForm] = useState({
     categoryId: '',
@@ -51,6 +64,22 @@ export default function CreateReportPage() {
   const [stage, setStage] = useState(null) // 'uploading' | 'saving'
   const [created, setCreated] = useState(null)
 
+  const [categories, buildings] = ref.data || [[], []]
+
+  // Pre-select category if supplied via URL query parameter (e.g. from quick shortcut)
+  useEffect(() => {
+    if (categories.length && categoryParam && !form.categoryId) {
+      const match = categories.find(
+        (c) =>
+          c.name.toLowerCase().includes(categoryParam.toLowerCase()) ||
+          c.id === categoryParam
+      )
+      if (match) {
+        setForm((f) => ({ ...f, categoryId: match.id }))
+      }
+    }
+  }, [categories, categoryParam, form.categoryId])
+
   const set = (k) => (v) => {
     setForm((f) => ({
       ...f,
@@ -60,7 +89,6 @@ export default function CreateReportPage() {
     setErrors((e) => ({ ...e, [k]: undefined }))
   }
 
-  const [categories, buildings] = ref.data || [[], []]
   const selectedCategory = useMemo(
     () => categories.find((c) => c.id === form.categoryId),
     [categories, form.categoryId]
@@ -146,18 +174,23 @@ export default function CreateReportPage() {
                   onClick={() => set('categoryId')(c.id)}
                   aria-pressed={form.categoryId === c.id}
                   className={cx(
-                    'rounded-lg border p-3 text-left text-sm transition',
+                    'rounded-xl border p-3 text-left text-sm transition flex items-center gap-2.5',
                     form.categoryId === c.id
-                      ? 'border-primary-600 bg-primary-50 ring-1 ring-primary-600'
-                      : 'hover:border-gray-400'
+                      ? 'border-primary-600 bg-primary-50 ring-2 ring-primary-500 font-bold shadow-xs'
+                      : 'hover:border-gray-400 bg-white'
                   )}
                 >
-                  <span className="font-semibold text-gray-900">{c.name}</span>
+                  <span className="text-xl shrink-0" role="img" aria-hidden="true">
+                    {CATEGORY_EMOJIS[c.name] || '🛠️'}
+                  </span>
+                  <span className="font-semibold text-gray-900 leading-tight">{c.name}</span>
                 </button>
               ))}
             </div>
             {selectedCategory?.description && (
-              <p className="mt-2 text-xs text-gray-500">{selectedCategory.description}</p>
+              <p className="mt-2 text-xs text-primary-800 bg-primary-50/60 p-2 rounded-lg border border-primary-200/50">
+                ℹ️ {selectedCategory.description}
+              </p>
             )}
           </Field>
 
@@ -243,6 +276,16 @@ export default function CreateReportPage() {
             error={errors.photos}
             label="Supporting photographs (recommended)"
           />
+
+          <div className="rounded-xl bg-primary-50 p-3.5 border border-primary-200/60 text-xs text-primary-900 flex items-start gap-2.5">
+            <span className="text-base shrink-0">💡</span>
+            <div>
+              <p className="font-bold">Student Hostel Tip:</p>
+              <p className="text-primary-800">
+                Adding a clear photo and specifying the exact location (e.g. &quot;socket next to study desk 2&quot; or &quot;washbasin cold tap&quot;) helps our technician arrive with the right tools and replacement parts immediately!
+              </p>
+            </div>
+          </div>
 
           <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
             <Link to="/student" className="btn-secondary">

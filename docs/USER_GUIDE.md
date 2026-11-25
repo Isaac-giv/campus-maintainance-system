@@ -8,6 +8,20 @@
 - **Profile:** open _My Profile_ from the sidebar or the account menu to update your details, photo and password. Technicians can mark themselves unavailable here.
 - **Notifications:** the bell icon shows unread notifications. Click one to open the related report. _Notifications_ in the sidebar shows your full history, where you can filter unread, mark items read or unread, and delete them.
 
+### 🔑 Demo Accounts & Seed Credentials
+
+The following accounts are already provisioned and confirmed on the live database for instant testing:
+
+| Role | Email | Password | Persona / Department |
+| :--- | :--- | :--- | :--- |
+| **Student** | `student@cosmopolitan.edu.ng` | `Student@1234` | Chinwe Eze (Hostel Block A, Room 102) |
+| **Student (Block B)** | `student.hostelb@cosmopolitan.edu.ng` | `Student@1234` | Amina Bello (Hostel Block B, Room 202) |
+| **Supervisor** | `supervisor@cosmopolitan.edu.ng` | `Supervisor@1234` | Mr. Bello Ahmed (Works & Services) |
+| **Technician (Electrical)** | `technician.electrical@cosmopolitan.edu.ng` | `Technician@1234` | Engr. Musa Sani (Electrical Services) |
+| **Technician (Plumbing)** | `technician.plumbing@cosmopolitan.edu.ng` | `Technician@1234` | Emeka Okafor (Works & Services) |
+| **Technician (Carpentry)** | `technician.carpentry@cosmopolitan.edu.ng` | `Technician@1234` | Babajide Adeleke (Works & Services) |
+| **Administrator** | `admin@cosmopolitan.edu.ng` | `Admin@1234` | Dr. Ibrahim Aliyu (Director of Works) |
+
 ## Student
 
 1. **Dashboard:** shows your total, pending, in-progress and resolved reports and your most recent complaints.

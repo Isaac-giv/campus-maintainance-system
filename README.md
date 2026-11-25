@@ -67,8 +67,19 @@ supabase/
 > psql "postgresql://postgres.<ref>:<db-password>@aws-1-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
 > ```
 
-**Admin account:** `kemi.adeyemi7625@cosmopolitan.edu.ng` is promoted to `ADMIN` and confirmed. Change its password from
-_My Profile → Change password_ after signing in.
+### 🔑 Seed Accounts & Credentials
+
+The following accounts are already provisioned and confirmed on the live database for instant testing:
+
+| Role | Email | Password | Persona / Department |
+| :--- | :--- | :--- | :--- |
+| **Student (Hostel A)** | `student@cosmopolitan.edu.ng` | `Student@1234` | Chinwe Eze (Hostel Block A, Room 102) |
+| **Student (Hostel B)** | `student.hostelb@cosmopolitan.edu.ng` | `Student@1234` | Amina Bello (Hostel Block B, Room 202) |
+| **Supervisor** | `supervisor@cosmopolitan.edu.ng` | `Supervisor@1234` | Mr. Bello Ahmed (Works & Services) |
+| **Technician (Electrical)** | `technician.electrical@cosmopolitan.edu.ng` | `Technician@1234` | Engr. Musa Sani (Electrical Services) |
+| **Technician (Plumbing)** | `technician.plumbing@cosmopolitan.edu.ng` | `Technician@1234` | Emeka Okafor (Works & Services) |
+| **Technician (Carpentry)** | `technician.carpentry@cosmopolitan.edu.ng` | `Technician@1234` | Babajide Adeleke (Works & Services) |
+| **Administrator** | `admin@cosmopolitan.edu.ng` | `Admin@1234` | Dr. Ibrahim Aliyu (Director of Works) |
 
 ### Outstanding: deploy the `admin-users` Edge Function
 
