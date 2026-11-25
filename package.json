@@ -2,11 +2,10 @@
   "name": "campus-maintenance-system",
   "version": "0.1.0",
   "private": true,
-  "description": "Greenwood University Campus Maintenance Reporting and Tracking System — monorepo root",
+  "description": "Cosmopolitan University Campus Maintenance Reporting and Tracking System",
   "type": "module",
   "workspaces": [
     "apps/client",
-    "apps/server",
     "packages/shared"
   ],
   "engines": {
@@ -14,17 +13,18 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
+    "dev": "npm run dev --workspace=apps/client",
     "dev:client": "npm run dev --workspace=apps/client",
-    "dev:server": "npm run dev --workspace=apps/server",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
     "format": "prettier --write \"**/*.{js,jsx,json,md,css}\" --ignore-path .prettierignore",
     "format:check": "prettier --check \"**/*.{js,jsx,json,md,css}\" --ignore-path .prettierignore",
-    "clean": "npm run clean --workspaces --if-present"
+    "clean": "npm run clean --workspaces --if-present",
+    "test:db": "node supabase/tests/workflow.test.mjs"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0",
     "prettier": "^3.5.3"
   }
 }

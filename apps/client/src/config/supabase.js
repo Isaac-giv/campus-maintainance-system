@@ -1,21 +1,20 @@
-// apps/client/src/config/supabase.js
-// Supabase Client singleton for browser usage.
-// Uses VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.
-//
-// SECURITY NOTE:
-//   - Only the anon key is used here. It is safe to expose in the client bundle.
-//   - All operations using this client are subject to PostgreSQL Row Level Security (RLS).
-//   - NEVER expose or import the SUPABASE_SERVICE_ROLE_KEY in client code.
+// Supabase browser client. Only the anon key is used; every request is subject
+// to Row Level Security and RPC authorization checks in the database.
+// NEVER put the service_role key in client code.
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-})
+export const isSupabaseConfigured = Boolean(
+  supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('<your-project-ref>')
+)
+
+export const supabase = createClient(
+  supabaseUrl || 'https://not-configured.supabase.co',
+  supabaseAnonKey || 'not-configured',
+  {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  }
+)

@@ -10,7 +10,6 @@
   },
   "eslint.workingDirectories": [
     { "directory": "apps/client", "changeProcessCWD": true },
-    { "directory": "apps/server", "changeProcessCWD": true },
     { "directory": "packages/shared", "changeProcessCWD": true }
   ]
 }

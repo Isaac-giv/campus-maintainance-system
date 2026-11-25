@@ -41,6 +41,19 @@
            transition-colors duration-150;
   }
 
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-medium
+           text-white shadow-sm hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 transition-colors;
+  }
+  .btn-success {
+    @apply inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium
+           text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 transition-colors;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-gray-700
+           hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 transition-colors;
+  }
+
   /* Form input */
   .input {
     @apply block w-full rounded-lg border border-gray-300 bg-white px-3 py-2
